@@ -14,14 +14,16 @@ namespace TrafficData
         public static string DataPath = "E:/TrafficData/2014-09-07.dat";
         public static string OutputPath = "E:/TrafficData/Collect.csv";
         public static string OutputRoadDir = "E:/TrafficData/按路段分/";
+        public static string SplitRoadDir = "E:/TrafficData/按路段分(原数据)/";
 
 
 
         static void Main(string[] args)
         {
-            ReadData();
-            OutPutData();
-            OutPutDataByRoad();
+            SplitDataByRoad();
+            //ReadData();
+            //OutPutData();
+            //OutPutDataByRoad();
         }
 
         /// <summary>
@@ -185,12 +187,54 @@ namespace TrafficData
                     s = sr.ReadLine();
                     i++;
                 }
-                locDic.Keys.ToList().ForEach(p => {
+                locDic.Keys.ToList().ForEach(p =>
+                {
                     redisClient.ZAdd("AllLocates", 0, System.Text.Encoding.UTF8.GetBytes(p));
                 });
                 sw.Stop();
-                Console.WriteLine("读取完毕，总数据量：" + i+"，时间："+sw.ElapsedMilliseconds+" ms");
+                Console.WriteLine("读取完毕，总数据量：" + i + "，时间：" + sw.ElapsedMilliseconds + " ms");
             }
+
+        }
+
+        public static void SplitDataByRoad()
+        {
+            StreamReader sr = new StreamReader(DataPath);
+            Console.WriteLine("开始读取原数据");
+            var locDic = new Dictionary<string, StreamWriter>();
+            var sw = new Stopwatch();
+            sw.Start();
+            string s = sr.ReadLine();
+            long i = 0;
+            while (s != null)
+            {
+                if (i % 10000 == 0)
+                    Console.WriteLine("已读取数据量:" + i);
+                var sData = s.Split('\t');
+                var date = sData[4];
+                var locate = sData[6];
+                var carPlate = sData[3];
+                string data = string.Format("{0},{1},{2}",date,locate,carPlate);
+                
+                if(locDic.ContainsKey(locate))
+                {
+                    locDic[locate].WriteLine(data);
+                }
+                else
+                {
+                    locDic[locate] = new StreamWriter(SplitRoadDir+locate+".csv");
+                    locDic[locate].WriteLine(data);
+                }
+                s = sr.ReadLine();
+                i++;
+            }
+
+            foreach (var item in locDic)
+            {
+                item.Value.Close();
+            }
+            sw.Stop();
+            Console.WriteLine("读取完毕，总数据量：" + i + "，时间：" + sw.ElapsedMilliseconds + " ms");
 
         }
     }
